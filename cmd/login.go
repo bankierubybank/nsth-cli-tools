@@ -4,8 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	b64 "encoding/base64"
-	"fmt"
+	"bytes"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -28,9 +29,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("LOGGING IN...")
-		response := login(Username, Password, args[0])
-		fmt.Println(string(response.Status))
+		response, err := login(Username, Password, args[0])
+		if err != nil {
+			log.Printf("ERR. %v", err)
+		}
+		log.Println(string(response))
 	},
 }
 
@@ -46,35 +49,45 @@ func init() {
 	// loginCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	loginCmd.Flags().StringVarP(&Username, "username", "u", "", "Username (required if password is set)")
 	loginCmd.Flags().StringVarP(&Password, "password", "p", "", "Password (required if username is set)")
-	// loginCmd.Flags().StringVarP(&AQUA_URL, "host", "", "", "AQUA HOST (IP/NAME)")
-	// loginCmd.MarkFlagsRequiredTogether("username", "password")
+	loginCmd.MarkFlagsRequiredTogether("username", "password")
 
 	rootCmd.AddCommand(loginCmd)
 }
 
-func login(username string, password string, aqua_url string) *http.Response {
-	fmt.Println("Username: ", username)
-	// fmt.Println("Password: ", password)
-	fmt.Println("AQUA_URL: ", aqua_url)
-	auth := fmt.Sprintf("%s:%s", username, password)
-	authEncode := b64.StdEncoding.EncodeToString([]byte(auth))
+func login(usr string, pwd string, aqua_url string) ([]byte, error) {
+
+	loginBody := map[string]string{
+		"id":       usr,
+		"password": pwd,
+	}
+
+	loginBodyM, err := json.Marshal(loginBody)
+	if err != nil {
+		log.Printf("ERR. %v", err)
+	}
 
 	request, err := http.NewRequest(
-		http.MethodGet,
+		http.MethodPost,
 		aqua_url,
-		nil,
+		bytes.NewReader(loginBodyM),
 	)
 	if err != nil {
-		fmt.Println("Could not login. %v", err)
+		log.Printf("ERR. %v", err)
 	}
-	request.Header.Add("Accept", "application/json")
-	request.Header.Add("User-Agent", "NSTH CLI Tools")
-	request.Header.Add("Authorization", fmt.Sprintf("Basic %s", authEncode))
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("User-Agent", "NSTH CLI Tools")
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		log.Printf("Could not make a request. %v", err)
+		log.Printf("ERR. %v", err)
 	}
 
-	return response
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Printf("ERR. %v", err)
+	}
+
+	return body, err
 }

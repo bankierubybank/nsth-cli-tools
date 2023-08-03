@@ -1,3 +1,6 @@
 cobra-cli add login
 
-go run . login -u <USR> -p <PWD> <URL>
+# Test
+```
+go run . login -u <USR> -p <PWD> <AQUA_URL>
+```
