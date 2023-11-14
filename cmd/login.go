@@ -51,7 +51,7 @@ func init() {
 	loginCmd.Flags().StringVarP(&Password, "password", "p", "", "Password (required if username is set)")
 	loginCmd.MarkFlagsRequiredTogether("username", "password")
 
-	rootCmd.AddCommand(loginCmd)
+	aquaCmd.AddCommand(loginCmd)
 }
 
 func login(usr string, pwd string, aqua_url string) ([]byte, error) {
